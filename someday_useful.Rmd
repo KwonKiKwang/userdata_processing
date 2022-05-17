@@ -1,0 +1,170 @@
+---
+title: "temp"
+output: html_document
+---
+
+from 식단분석.R
+```{r}
+# java script 형식으로 된 Time 형태를 R의 Date 형식으로 변환
+Meal_Data$breakfast$time <- strptime(Meal_Data$breakfast$time, "%Y-%m-%dT%H:%M:%OSZ")  + 32400
+Meal_Data$lunch$time <- strptime(Meal_Data$lunch$time, "%Y-%m-%dT%H:%M:%OSZ") + 32400
+Meal_Data$dinner$time <- strptime(Meal_Data$dinner$time, "%Y-%m-%dT%H:%M:%OSZ") + 32400
+Meal_Data$snack$time <- strptime(Meal_Data$snack$time, "%Y-%m-%dT%H:%M:%OSZ") + 32400
+
+#일주일 간 섭취한 영양성분의 합과 평균 계산
+#현재 시간부터 일주일 내 식단 정보 저장
+d7_meal_breakfast <- subset(Meal_breakfast, Meal_breakfast$date<=Today & Meal_breakfast$date>d7)
+d7_meal_lunch <- subset(Meal_lunch, Meal_lunch$date<=Today & Meal_lunch$date>d7)
+d7_meal_dinner <- subset(Meal_dinner, Meal_dinner$date<=Today & Meal_dinner$date>d7)
+d7_meal_snack <- subset(Meal_snack, Meal_snack$date<=Today & Meal_snack$date>d7)
+
+#일주일간 아침에 먹은 총 영양성분
+d7_total_meal_breakfast <- d7_meal_breakfast%>%
+  group_by(date) %>%
+  summarise(calorie_sum = sum(calorie*amount, na.rm = TRUE),carbo_sum = sum(carbo*amount, na.rm = TRUE), protein_sum = sum(protein*amount, na.rm = TRUE), fat_sum = sum(fat*amount, na.rm = TRUE), sugars_sum = sum(sugars*amount, na.rm = TRUE), cholesterol_sum = sum(cholesterol*amount, na.rm = TRUE), sat_fat_sum = sum(sat_fat*amount, na.rm = TRUE), trans_fat_sum = sum(trans_fat*amount, na.rm = TRUE), triglyceride_sum = sum(triglyceride*amount, na.rm = TRUE))
+#일주일간 점심에 먹은 총 영양성분
+d7_total_meal_lunch <- d7_meal_lunch%>%
+  group_by(date) %>%
+  summarise(calorie_sum = sum(calorie*amount, na.rm = TRUE),carbo_sum = sum(carbo*amount, na.rm = TRUE), protein_sum = sum(protein*amount, na.rm = TRUE), fat_sum = sum(fat*amount, na.rm = TRUE), sugars_sum = sum(sugars*amount, na.rm = TRUE), cholesterol_sum = sum(cholesterol*amount, na.rm = TRUE), sat_fat_sum = sum(sat_fat*amount, na.rm = TRUE), trans_fat_sum = sum(trans_fat*amount, na.rm = TRUE), triglyceride_sum = sum(triglyceride*amount, na.rm = TRUE))
+#일주일간 저녁에 먹은 총 영양성분
+d7_total_meal_dinner <- d7_meal_dinner%>%
+  group_by(date) %>%
+  summarise(calorie_sum = sum(calorie*amount, na.rm = TRUE),carbo_sum = sum(carbo*amount, na.rm = TRUE), protein_sum = sum(protein*amount, na.rm = TRUE), fat_sum = sum(fat*amount, na.rm = TRUE), sugars_sum = sum(sugars*amount, na.rm = TRUE), cholesterol_sum = sum(cholesterol*amount, na.rm = TRUE), sat_fat_sum = sum(sat_fat*amount, na.rm = TRUE), trans_fat_sum = sum(trans_fat*amount, na.rm = TRUE), triglyceride_sum = sum(triglyceride*amount, na.rm = TRUE))
+#일주일간 간식으로 먹은 총 영양성분
+d7_total_meal_snack <- d7_meal_snack%>%
+  group_by(date) %>%
+  summarise(calorie_sum = sum(calorie*amount, na.rm = TRUE),carbo_sum = sum(carbo*amount, na.rm = TRUE), protein_sum = sum(protein*amount, na.rm = TRUE), fat_sum = sum(fat*amount, na.rm = TRUE), sugars_sum = sum(sugars*amount, na.rm = TRUE), cholesterol_sum = sum(cholesterol*amount, na.rm = TRUE), sat_fat_sum = sum(sat_fat*amount, na.rm = TRUE), trans_fat_sum = sum(trans_fat*amount, na.rm = TRUE), triglyceride_sum = sum(triglyceride*amount, na.rm = TRUE))
+
+#일주일간 섭취한 총 영양성분의 합이
+#d7_total에 저장됨
+d7_total <- rbind(d7_total_meal_breakfast, d7_total_meal_lunch,d7_total_meal_dinner, d7_total_meal_snack)%>%
+  group_by(date) %>%
+  summarise(calorie_total = sum(calorie_sum, na.rm = TRUE),carbo_total = sum(carbo_sum, na.rm = TRUE), protein_total = sum(protein_sum, na.rm = TRUE), fat_total = sum(fat_sum, na.rm = TRUE), sugars_total = sum(sugars_sum, na.rm = TRUE), cholesterol_total = sum(cholesterol_sum, na.rm = TRUE), sat_fat_total = sum(sat_fat_sum, na.rm = TRUE), trans_fat_total = sum(trans_fat_sum, na.rm = TRUE), triglyceride_total = sum(triglyceride_sum, na.rm = TRUE))
+
+#일주일간 섭취한 영양 성분 비율 추가
+d7_total <- d7_total %>% mutate(calorie_ratio = round(calorie_total/User_Data$BMR*100,1), 
+                                #기초대사량 대비 섭취 칼로리 비율
+                                carbo_ratio = round(carbo_total*4/(carbo_total*4+protein_total*4+fat_total*9)*100,1), 
+                                #탄수화물 섭취 비율
+                                protein_ratio = round(protein_total*4/(carbo_total*4+protein_total*4+fat_total*9)*100,1), 
+                                #단백질 섭취 비율
+                                fat_ratio = 100-carbo_ratio-protein_ratio, 
+                                #지방 섭취 비율
+                                sugars_ratio = round(sugars_total/standard[4]*100,2),
+                                #권장 당 섭취량 대비 당 섭취 비율
+                                chol_ratio = round(cholesterol_total/chol_standard*100,2), 
+                                #권장 콜레스테롤 섭취량 대비 콜레스테롤 섭취 비율
+                                sat_fat_ratio = round(sat_fat_total/User_sat_fat_standard*100,2), 
+                                #권장 포화지방 섭취량 대비 포화지방 섭취 비율
+                                trans_fat_ratio = round(trans_fat_total/User_trans_fat_standard*100,2) 
+                                #권장 트랜스지방 섭취량 대비 트랜스지방 섭취 비율
+)
+
+# 일주일간 아침, 점심, 저녁, 간식 끼니 별 영양성분의 평균
+d7_mean_breakfast <- d7_total_meal_breakfast %>% summarize(calorie_mean = mean(calorie_sum, na.rm = TRUE),carbo_mean = mean(carbo_sum, na.rm = TRUE), protein_mean = mean(protein_sum, na.rm = TRUE), fat_mean = mean(fat_sum, na.rm = TRUE), sugars_mean = mean(sugars_sum, na.rm = TRUE), cholesterol_mean = mean(cholesterol_sum, na.rm = TRUE), sat_fat_mean = mean(sat_fat_sum, na.rm = TRUE), trans_fat_mean = mean(trans_fat_sum, na.rm = TRUE), triglyceride_mean = mean(triglyceride_sum, na.rm = TRUE))
+d7_mean_lunch <- d7_total_meal_lunch %>% summarize(calorie_mean = mean(calorie_sum, na.rm = TRUE),carbo_mean = mean(carbo_sum, na.rm = TRUE), protein_mean = mean(protein_sum, na.rm = TRUE), fat_mean = mean(fat_sum, na.rm = TRUE), sugars_mean = mean(sugars_sum, na.rm = TRUE), cholesterol_mean = mean(cholesterol_sum, na.rm = TRUE), sat_fat_mean = mean(sat_fat_sum, na.rm = TRUE), trans_fat_mean = mean(trans_fat_sum, na.rm = TRUE), triglyceride_mean = mean(triglyceride_sum, na.rm = TRUE))
+d7_mean_dinner <- d7_total_meal_dinner %>% summarize(calorie_mean = mean(calorie_sum, na.rm = TRUE),carbo_mean = mean(carbo_sum, na.rm = TRUE), protein_mean = mean(protein_sum, na.rm = TRUE), fat_mean = mean(fat_sum, na.rm = TRUE), sugars_mean = mean(sugars_sum, na.rm = TRUE), cholesterol_mean = mean(cholesterol_sum, na.rm = TRUE), sat_fat_mean = mean(sat_fat_sum, na.rm = TRUE), trans_fat_mean = mean(trans_fat_sum, na.rm = TRUE), triglyceride_mean = mean(triglyceride_sum, na.rm = TRUE))
+d7_mean_snack <- d7_total_meal_snack %>% summarize(calorie_mean = mean(calorie_sum, na.rm = TRUE),carbo_mean = mean(carbo_sum, na.rm = TRUE), protein_mean = mean(protein_sum, na.rm = TRUE), fat_mean = mean(fat_sum, na.rm = TRUE), sugars_mean = mean(sugars_sum, na.rm = TRUE), cholesterol_mean = mean(cholesterol_sum, na.rm = TRUE), sat_fat_mean = mean(sat_fat_sum, na.rm = TRUE), trans_fat_mean = mean(trans_fat_sum, na.rm = TRUE), triglyceride_mean = mean(triglyceride_sum, na.rm = TRUE))
+
+# 일주일간 일일 평균 영양분 섭취량
+d7_mean_total <- rbind(d7_mean_breakfast, d7_mean_lunch, d7_mean_dinner, d7_mean_snack)%>%
+  summarise(calorie_mean_total = sum(calorie_mean, na.rm = TRUE),carbo_mean_total = sum(carbo_mean, na.rm = TRUE), protein_mean_total = sum(protein_mean, na.rm = TRUE), fat_mean_total = sum(fat_mean, na.rm = TRUE), sugars_mean_total = sum(sugars_mean, na.rm = TRUE), cholesterol_mean_total = sum(cholesterol_mean, na.rm = TRUE), sat_fat_mean_total = sum(sat_fat_mean, na.rm = TRUE), trans_fat_mean_total = sum(trans_fat_mean, na.rm = TRUE), triglyceride_mean_total = sum(triglyceride_mean, na.rm = TRUE))
+
+#일주일간 섭취한 일일 평균 영양분 섭취 비율 추가
+d7_mean_total <- d7_mean_total %>% mutate(calorie_ratio = round(calorie_mean_total/User_Data$BMR*100,1), 
+                                          #기초대사량 대비 섭취 칼로리 비율
+                                          carbo_ratio = round(carbo_mean_total*4/(carbo_mean_total*4+protein_mean_total*4+fat_mean_total*9)*100,1), 
+                                          #탄수화물 섭취 비율
+                                          protein_ratio = round(protein_mean_total*4/(carbo_mean_total*4+protein_mean_total*4+fat_mean_total*9)*100,1), 
+                                          #단백질 섭취 비율
+                                          fat_ratio = 100-carbo_ratio-protein_ratio, 
+                                          #지방 섭취 비율
+                                          sugars_ratio = round(sugars_mean_total/standard[4]*100,2),
+                                          #권장 당 섭취량 대비 당 섭취 비율
+                                          chol_ratio = round(cholesterol_mean_total/chol_standard*100,2), 
+                                          #권장 콜레스테롤 섭취량 대비 콜레스테롤 섭취 비율
+                                          sat_fat_ratio = round(sat_fat_mean_total/User_sat_fat_standard*100,2), 
+                                          #권장 포화지방 섭취량 대비 포화지방 섭취 비율
+                                          trans_fat_ratio = round(trans_fat_mean_total/User_trans_fat_standard*100,2) 
+                                          #권장 트랜스지방 섭취량 대비 트랜스지방 섭취 비율
+)
+
+#한 달 간 섭취한 영양성분의 합과 평균 계산
+#현재 시간부터 한달 내 식단 정보 저장
+d30_meal_breakfast <- subset(Meal_breakfast, Meal_breakfast$date<=Today & Meal_breakfast$date>d30)
+d30_meal_lunch <- subset(Meal_lunch, Meal_lunch$date<=Today & Meal_lunch$date>d30)
+d30_meal_dinner <- subset(Meal_dinner, Meal_dinner$date<=Today & Meal_dinner$date>d30)
+d30_meal_snack <- subset(Meal_snack, Meal_snack$date<=Today & Meal_snack$date>d30)
+
+#한달동안 아침에 먹은 총 영양성분
+d30_total_meal_breakfast <- d30_meal_breakfast%>%
+  group_by(date) %>%
+  summarise(calorie_sum = sum(calorie*amount, na.rm = TRUE),carbo_sum = sum(carbo*amount, na.rm = TRUE), protein_sum = sum(protein*amount, na.rm = TRUE), fat_sum = sum(fat*amount, na.rm = TRUE), sugars_sum = sum(sugars*amount, na.rm = TRUE), cholesterol_sum = sum(cholesterol*amount, na.rm = TRUE), sat_fat_sum = sum(sat_fat*amount, na.rm = TRUE), trans_fat_sum = sum(trans_fat*amount, na.rm = TRUE), triglyceride_sum = sum(triglyceride*amount, na.rm = TRUE))
+#한달동안 점심에 먹은 총 영양성분
+d30_total_meal_lunch <- d30_meal_lunch%>%
+  group_by(date) %>%
+  summarise(calorie_sum = sum(calorie*amount, na.rm = TRUE),carbo_sum = sum(carbo*amount, na.rm = TRUE), protein_sum = sum(protein*amount, na.rm = TRUE), fat_sum = sum(fat*amount, na.rm = TRUE), sugars_sum = sum(sugars*amount, na.rm = TRUE), cholesterol_sum = sum(cholesterol*amount, na.rm = TRUE), sat_fat_sum = sum(sat_fat*amount, na.rm = TRUE), trans_fat_sum = sum(trans_fat*amount, na.rm = TRUE), triglyceride_sum = sum(triglyceride*amount, na.rm = TRUE))
+#한달동안 저녁에 먹은 총 영양성분
+d30_total_meal_dinner <- d30_meal_dinner%>%
+  group_by(date) %>%
+  summarise(calorie_sum = sum(calorie*amount, na.rm = TRUE),carbo_sum = sum(carbo*amount, na.rm = TRUE), protein_sum = sum(protein*amount, na.rm = TRUE), fat_sum = sum(fat*amount, na.rm = TRUE), sugars_sum = sum(sugars*amount, na.rm = TRUE), cholesterol_sum = sum(cholesterol*amount, na.rm = TRUE), sat_fat_sum = sum(sat_fat*amount, na.rm = TRUE), trans_fat_sum = sum(trans_fat*amount, na.rm = TRUE), triglyceride_sum = sum(triglyceride*amount, na.rm = TRUE))
+#한달동안 간식으로 먹은 총 영양성분
+d30_total_meal_snack <- d30_meal_snack%>%
+  group_by(date) %>%
+  summarise(calorie_sum = sum(calorie*amount, na.rm = TRUE),carbo_sum = sum(carbo*amount, na.rm = TRUE), protein_sum = sum(protein*amount, na.rm = TRUE), fat_sum = sum(fat*amount, na.rm = TRUE), sugars_sum = sum(sugars*amount, na.rm = TRUE), cholesterol_sum = sum(cholesterol*amount, na.rm = TRUE), sat_fat_sum = sum(sat_fat*amount, na.rm = TRUE), trans_fat_sum = sum(trans_fat*amount, na.rm = TRUE), triglyceride_sum = sum(triglyceride*amount, na.rm = TRUE))
+
+#한달동안 섭취한 총 영양성분의 합
+#d30_total에 저장됨
+d30_total <- rbind(d30_total_meal_breakfast, d30_total_meal_lunch,d30_total_meal_dinner, d30_total_meal_snack)%>%
+  group_by(date) %>%
+  summarise(calorie_total = sum(calorie_sum, na.rm = TRUE),carbo_total = sum(carbo_sum, na.rm = TRUE), protein_total = sum(protein_sum, na.rm = TRUE), fat_total = sum(fat_sum, na.rm = TRUE), sugars_total = sum(sugars_sum, na.rm = TRUE), cholesterol_total = sum(cholesterol_sum, na.rm = TRUE), sat_fat_total = sum(sat_fat_sum, na.rm = TRUE), trans_fat_total = sum(trans_fat_sum, na.rm = TRUE), triglyceride_total = sum(triglyceride_sum, na.rm = TRUE))
+
+#한달동안 섭취한 영양 성분 비율 추가
+d30_total <- d30_total %>% mutate(calorie_ratio = round(calorie_total/User_Data$BMR*100,1), 
+                                  #기초대사량 대비 섭취 칼로리 비율
+                                  carbo_ratio = round(carbo_total*4/(carbo_total*4+protein_total*4+fat_total*9)*100,1), 
+                                  #탄수화물 섭취 비율
+                                  protein_ratio = round(protein_total*4/(carbo_total*4+protein_total*4+fat_total*9)*100,1), 
+                                  #단백질 섭취 비율
+                                  fat_ratio = 100-carbo_ratio-protein_ratio, 
+                                  #지방 섭취 비율
+                                  sugars_ratio = round(sugars_total/standard[4]*100,2),
+                                  #권장 당 섭취량 대비 당 섭취 비율
+                                  chol_ratio = round(cholesterol_total/chol_standard*100,2), 
+                                  #권장 콜레스테롤 섭취량 대비 콜레스테롤 섭취 비율
+                                  sat_fat_ratio = round(sat_fat_total/User_sat_fat_standard*100,2), 
+                                  #권장 포화지방 섭취량 대비 포화지방 섭취 비율
+                                  trans_fat_ratio = round(trans_fat_total/User_trans_fat_standard*100,2) 
+                                  #권장 트랜스지방 섭취량 대비 트랜스지방 섭취 비율
+)
+
+# 한달동안 아침, 점심, 저녁, 간식 끼니 별 영양성분의 평균
+d30_mean_breakfast <- d30_total_meal_breakfast %>% summarize(calorie_mean = mean(calorie_sum, na.rm = TRUE),carbo_mean = mean(carbo_sum, na.rm = TRUE), protein_mean = mean(protein_sum, na.rm = TRUE), fat_mean = mean(fat_sum, na.rm = TRUE), sugars_mean = mean(sugars_sum, na.rm = TRUE), cholesterol_mean = mean(cholesterol_sum, na.rm = TRUE), sat_fat_mean = mean(sat_fat_sum, na.rm = TRUE), trans_fat_mean = mean(trans_fat_sum, na.rm = TRUE), triglyceride_mean = mean(triglyceride_sum, na.rm = TRUE))
+d30_mean_lunch <- d30_total_meal_lunch %>% summarize(calorie_mean = mean(calorie_sum, na.rm = TRUE),carbo_mean = mean(carbo_sum, na.rm = TRUE), protein_mean = mean(protein_sum, na.rm = TRUE), fat_mean = mean(fat_sum, na.rm = TRUE), sugars_mean = mean(sugars_sum, na.rm = TRUE), cholesterol_mean = mean(cholesterol_sum, na.rm = TRUE), sat_fat_mean = mean(sat_fat_sum, na.rm = TRUE), trans_fat_mean = mean(trans_fat_sum, na.rm = TRUE), triglyceride_mean = mean(triglyceride_sum, na.rm = TRUE))
+d30_mean_dinner <- d30_total_meal_dinner %>% summarize(calorie_mean = mean(calorie_sum, na.rm = TRUE),carbo_mean = mean(carbo_sum, na.rm = TRUE), protein_mean = mean(protein_sum, na.rm = TRUE), fat_mean = mean(fat_sum, na.rm = TRUE), sugars_mean = mean(sugars_sum, na.rm = TRUE), cholesterol_mean = mean(cholesterol_sum, na.rm = TRUE), sat_fat_mean = mean(sat_fat_sum, na.rm = TRUE), trans_fat_mean = mean(trans_fat_sum, na.rm = TRUE), triglyceride_mean = mean(triglyceride_sum, na.rm = TRUE))
+d30_mean_snack <- d30_total_meal_snack %>% summarize(calorie_mean = mean(calorie_sum, na.rm = TRUE),carbo_mean = mean(carbo_sum, na.rm = TRUE), protein_mean = mean(protein_sum, na.rm = TRUE), fat_mean = mean(fat_sum, na.rm = TRUE), sugars_mean = mean(sugars_sum, na.rm = TRUE), cholesterol_mean = mean(cholesterol_sum, na.rm = TRUE), sat_fat_mean = mean(sat_fat_sum, na.rm = TRUE), trans_fat_mean = mean(trans_fat_sum, na.rm = TRUE), triglyceride_mean = mean(triglyceride_sum, na.rm = TRUE))
+
+# 한달동안 일일 평균 영양분 섭취량
+d30_mean_total <- rbind(d30_mean_breakfast, d30_mean_lunch, d30_mean_dinner, d30_mean_snack) %>%
+  summarise(calorie_mean_total = sum(calorie_mean, na.rm = TRUE),carbo_mean_total = sum(carbo_mean, na.rm = TRUE), protein_mean_total = sum(protein_mean, na.rm = TRUE), fat_mean_total = sum(fat_mean, na.rm = TRUE), sugars_mean_total = sum(sugars_mean, na.rm = TRUE), cholesterol_mean_total = sum(cholesterol_mean, na.rm = TRUE), sat_fat_mean_total = sum(sat_fat_mean, na.rm = TRUE), trans_fat_mean_total = sum(trans_fat_mean, na.rm = TRUE), triglyceride_mean_total = sum(triglyceride_mean, na.rm = TRUE))
+
+#한달동안 섭취한 일일 평균 영양분 섭취 비율 추가
+d30_mean_total <- d30_mean_total %>% mutate(calorie_ratio = round(calorie_mean_total/User_Data$BMR*100,1), 
+                                            #기초대사량 대비 섭취 칼로리 비율
+                                            carbo_ratio = round(carbo_mean_total*4/(carbo_mean_total*4+protein_mean_total*4+fat_mean_total*9)*100,1), 
+                                            #탄수화물 섭취 비율
+                                            protein_ratio = round(protein_mean_total*4/(carbo_mean_total*4+protein_mean_total*4+fat_mean_total*9)*100,1), 
+                                            #단백질 섭취 비율
+                                            fat_ratio = 100-carbo_ratio-protein_ratio, 
+                                            #지방 섭취 비율
+                                            sugars_ratio = round(sugars_mean_total/standard[4]*100,2),
+                                            #권장 당 섭취량 대비 당 섭취 비율
+                                            chol_ratio = round(cholesterol_mean_total/chol_standard*100,2), 
+                                            #권장 콜레스테롤 섭취량 대비 콜레스테롤 섭취 비율
+                                            sat_fat_ratio = round(sat_fat_mean_total/User_sat_fat_standard*100,2), 
+                                            #권장 포화지방 섭취량 대비 포화지방 섭취 비율
+                                            trans_fat_ratio = round(trans_fat_mean_total/User_trans_fat_standard*100,2) 
+                                            #권장 트랜스지방 섭취량 대비 트랜스지방 섭취 비율
+)
+```
+
